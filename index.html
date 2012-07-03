@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Swiftscout : Scan for and add drives to a Swift ring" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Swiftscout</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/pandemicsyn/swiftscout">View on GitHub</a>
+
+          <h1 id="project_title">Swiftscout</h1>
+          <h2 id="project_tagline">Scan for and add drives to a Swift ring</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/pandemicsyn/swiftscout/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/pandemicsyn/swiftscout/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>Swift Scout</h1>
+
+<p>A set of utilities for simplifying tasks in <a href="http://github.com/openstack/swift">Swift</a></p>
+
+<h2>ringscout - scan for and easily bulk add devices to the ring.</h2>
+
+<p>ringscout lets you scan for hosts and interrogates nodes with <a href="http://docs.openstack.org/developer/swift/admin_guide.html#cluster-telemetry-and-monitoring">swift-recon</a> enabled to let you bulk add devices to the swift ring.</p>
+
+<pre><code>Usage:
+    usage: ringscout [-v] [--suppress] [-y] [-z zone] [-w weight] [-m "meta"]
+    [--swift-dir=/etc/swift] builder.file
+
+    ex: ringscout -y -r 1.1.1.1-254 -p 6000 --zone=1 -w 25 object.builder -y
+
+
+Options:
+  -h, --help            show this help message and exit
+  -v, --verbose         Print verbose info
+  --dry-run             Dry run don't make any changes to builder files
+  --suppress            Suppress most connection related errors
+  -z ZONE, --zone=ZONE  Add devices to given zone
+  -w WEIGHT, --weight=WEIGHT
+                        Add devices with given weight
+  -t SECONDS, --timeout=SECONDS
+                        Time to wait for a response from a server
+  -y, --yes             Answer all questions yes
+  -m META, --meta=META  Default = Nothing
+  -r IPRANGE, --iprange=IPRANGE
+  -p PORT, --port=PORT
+  -e DRIVE_EXCLUDE, --drive-exclude=DRIVE_EXCLUDE
+                        Exclude drives matching this pattern
+  -i DRIVE_INCLUDE, --drive-include=DRIVE_INCLUDE
+                        Include only drives matching this pattern
+  --swiftdir=SWIFTDIR   Default = /etc/swift
+</code></pre>
+
+<h2>Building a debian package:</h2>
+
+<pre><code>python setup.py --command-packages=stdeb.command bdist_deb
+dpkg -i deb_dist/python-swiftscout_X.X.Xall.deb
+</code></pre>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Swiftscout maintained by <a href="https://github.com/pandemicsyn">pandemicsyn</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-1847891-9");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+
+  </body>
+</html>
