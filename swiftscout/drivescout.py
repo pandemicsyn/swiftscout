@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from swiftscout.utils import RingScan
 from urlparse import urlparse
-from sys import exit, argv, modules
+from sys import exit, argv
 import optparse
 import cPickle as pickle
 from os.path import basename, isfile, join as pathjoin
@@ -13,7 +13,7 @@ from os import mkdir
 import re
 
 
-class RingScout(object):
+class DriveScout(object):
 
     def __init__(self, builder_file, swiftdir='/etc/swift',
                  backup_dir_name='backups', verbose=False):
@@ -21,27 +21,7 @@ class RingScout(object):
         self.builder_file = builder_file
         self.swiftdir = swiftdir
         self.backup_dir = pathjoin(self.swiftdir, backup_dir_name)
-        if self.verbose:
-            print ">>> Loading %s (%s)" % (
-                self.builder_file, self.get_md5sum(self.builder_file))
-        try:
-            self.builder = pickle.load(open(self.builder_file, 'rb'))
-            if not hasattr(self.builder, 'devs'):
-                if self.verbose:
-                    print ">>> No devs, calling RingBuilder"
-                builder_dict = self.builder
-                self.builder = RingBuilder(1, 1, 1)
-                self.builder.copy_from(builder_dict)
-        except ImportError:  # Happens with really old builder pickles
-            if self.verbose:
-                print ">>> Using old builder"
-            modules['swift.ring_builder'] = \
-                modules['swift.common.ring.builder']
-            self.builder = RingBuilder(1, 1, 1)
-            self.builder.copy_from(pickle.load(open(self.builder_file, 'rb')))
-        for dev in self.builder.devs:
-            if dev and 'meta' not in dev:
-                dev['meta'] = ''
+        self.builder = RingBuilder.load(builder_file)
 
     def make_backup(self):
         """Create a backup of the current builder builder contents"""
@@ -78,12 +58,9 @@ class RingScout(object):
 
     def add_dev(self, ip, port, device_name, zone, weight, meta):
         """Add a device to the builder"""
-        next_dev_id = 0
-        if self.builder.devs:
-            next_dev_id = max(d['id'] for d in self.builder.devs if d) + 1
-        self.builder.add_dev({'id': next_dev_id, 'zone': zone, 'ip': ip,
-                              'port': int(port), 'device': device_name,
-                              'weight': weight, 'meta': meta})
+        self.builder.add_dev({'zone': zone, 'ip': ip, 'port': int(port),
+                              'device': device_name, 'weight': weight,
+                              'meta': meta})
 
     def dump_builder(self):
         """Dump builder state to disk"""
@@ -113,7 +90,7 @@ class RingScout(object):
             print "Malformed ip"
             exit(1)
 
-    def scan(self, hosts, zone, meta, weight, drive_prefix='/srv/node',
+    def scan(self, hosts, zone, meta, weight, mount_prefix='/srv/node',
              include_pattern=None, exclude_pattern=None, dry_run=False,
              confirm=True):
         """Search for and possible add devices to the ring by querying the
@@ -129,7 +106,7 @@ class RingScout(object):
                 continue
             for i in result[host]['devices']:
                 if i['device']:
-                    if i['path'].startswith(drive_prefix):
+                    if i['path'].startswith(mount_prefix):
                         device_name = basename(i['path'])
                         if exclude_pattern and include_pattern:
                             if not exclude.match(device_name) \
@@ -156,7 +133,11 @@ class RingScout(object):
             if not confirm_resp == "yes" and not confirm_resp == "y":
                 print "aborting."
                 exit(1)
-        self.make_backup()
+        if not dry_run:
+            self.make_backup()
+        else:
+            print "Dry Run - skipping backing up builder file"
+        builder_changed = False
         for host in found:
             for device in found[host]:
                 print "Adding z%s-%s/%s_%s %s" % (zone, host, device, meta,
@@ -167,8 +148,12 @@ class RingScout(object):
                     print "Skipped %s on %s already in ring." % (device, host)
                 else:
                     self.add_dev(ip, port, device, zone, weight, meta)
-        if not dry_run:
-            self.dump_builder()
+                    builder_changed = True
+        if builder_changed:
+            if not dry_run:
+                self.dump_builder()
+            else:
+                print "Dry Run - skipping writing builder file"
 
 
 def cli():
@@ -201,6 +186,8 @@ def cli():
                     help="Exclude drives matching this pattern")
     args.add_option('--drive-include', '-i', default="",
                     help="Include only drives matching this pattern")
+    args.add_option('--mount-prefix', default="/srv/node",
+                    help="Search for drives mounted along this path")
     args.add_option('--swiftdir', default="/etc/swift",
                     help="Default = /etc/swift")
     options, arguments = args.parse_args()
@@ -258,16 +245,17 @@ def cli():
         confirm = False
     else:
         confirm = True
-    print "Scanning %s for drives to add to zone %s with metadata [%s]" % \
-          (iprange, zoneid, options.meta)
+    print "Scanning %s[:%s] for devices to add to zone %s w/ metadata [%s]" % \
+          (iprange, port, zoneid, options.meta)
 
-    scout = RingScout(builder_file, swiftdir=options.swiftdir,
-                      verbose=options.verbose)
+    scout = DriveScout(builder_file, swiftdir=options.swiftdir,
+                       verbose=options.verbose)
     hosts = [(ip, port) for ip in scout.parse_ip(iprange)]
 
     scout.scan(hosts, zone=zoneid, meta=options.meta, weight=weight,
+               mount_prefix=options.mount_prefix,
                exclude_pattern=options.drive_exclude,
-               include_pattern=options.drive_include, dry_run=False,
+               include_pattern=options.drive_include, dry_run=options.dry_run,
                confirm=confirm)
 
 if __name__ == '__main__':
