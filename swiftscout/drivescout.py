@@ -91,7 +91,7 @@ class DriveScout(object):
             exit(1)
 
     def scan(self, hosts, zone, meta, weight, mount_prefix='/srv/node',
-             include_pattern=None, exclude_pattern=None, dry_run=False,
+             include_pattern='', exclude_pattern='', dry_run=False,
              confirm=True):
         """Search for and possible add devices to the ring by querying the
         recon interface on a provide iprange."""
@@ -130,7 +130,7 @@ class DriveScout(object):
         if confirm:
             confirm_resp = raw_input('Add devices to ZONE %s: [y/n]: ' % zone)
             confirm_resp = confirm_resp.strip().lower()
-            if not confirm_resp == "yes" and not confirm_resp == "y":
+            if not confirm_resp in ['yes', 'y']:
                 print "aborting."
                 exit(1)
         if not dry_run:
