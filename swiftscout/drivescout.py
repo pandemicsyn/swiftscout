@@ -108,18 +108,11 @@ class DriveScout(object):
                 if i['device']:
                     if i['path'].startswith(mount_prefix):
                         device_name = basename(i['path'])
-                        if exclude_pattern and include_pattern:
-                            if not exclude.match(device_name) \
-                                    and include.match(device_name):
-                                devs.append(device_name)
-                        elif exclude_pattern and \
-                                not exclude.match(device_name):
-                            devs.append(device_name)
-                        elif include_pattern and \
-                                include.match(device_name):
-                            devs.append(device_name)
-                        else:
-                            devs.append(device_name)
+                        if exclude_pattern and exclude.match(device_name):
+                            continue
+                        if include_pattern and not include.match(device_name):
+                            continue
+                        devs.append(device_name)
             if len(devs) > 0:
                 found[urlparse(host).netloc] = devs
                 print "%s found: %s" % (urlparse(host).netloc,
@@ -205,10 +198,6 @@ def cli():
             print "Not a valid builder file."
             print "Perhaps you need to create it first?"
             exit(1)
-    if options.drive_exclude and options.drive_include:
-        print "Error: Can't specify a exclude pattern AND include pattern."
-        args.print_help()
-        exit(1)
     if options.iprange:
         iprange = options.iprange
     else:
