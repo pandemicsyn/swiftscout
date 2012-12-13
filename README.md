@@ -5,14 +5,15 @@ A set of utilities for simplifying tasks in [Swift](http://github.com/openstack/
 
 ## drivescout - scan for and easily bulk add devices to the ring.
 
-drivescout lets you scan for hosts and interrogates nodes with [swift-recon](http://docs.openstack.org/developer/swift/admin_guide.html#cluster-telemetry-and-monitoring) enabled to let you bulk add devices to the swift ring.
+drivescout lets you scan for hosts by interrogating nodes with [swift-recon](http://docs.openstack.org/developer/swift/admin_guide.html#cluster-telemetry-and-monitoring)
+enabled to let you bulk add devices to the swift ring. It also supports add devices with a "target weight" for use with [swift-ring-master](http://github.com/pandemicsyn/swift-ring-master).
 
-    Usage: 
-        usage: drivescout [-v] [--suppress] [-y] [-z zone] [-w weight] [-m "meta"]
-        [--swift-dir=/etc/swift] builder.file
+    Usage:
+        usage: drivescout [-v] [--suppress] [-y] [-z zone] [-w weight] [-W tgt_weight]
+        [-m "meta"] [--swift-dir=/etc/swift] builder.file
 
         ex: drivescout -y -r 1.1.1.1-254 -p 6000 --zone=1 -w 25 object.builder -y
-        
+
 
     Options:
       -h, --help            show this help message and exit
@@ -22,12 +23,14 @@ drivescout lets you scan for hosts and interrogates nodes with [swift-recon](htt
       -z ZONE, --zone=ZONE  Add devices to given zone
       -w WEIGHT, --weight=WEIGHT
                             Add devices with given weight
-      -t SECONDS, --timeout=SECONDS
-                            Time to wait for a response from a server
+      -t TARGET_WEIGHT, --target-weight=TARGET_WEIGHT
+                            Add devices with given target weight, Default = Not
+                            Used
+      --timeout=SECONDS     Time to wait for a response from a server
       -y, --yes             Answer all questions yes
       -m META, --meta=META  Default = Nothing
       -r IPRANGE, --iprange=IPRANGE
-      -p PORT, --port=PORT  
+      -p PORT, --port=PORT
       -e DRIVE_EXCLUDE, --drive-exclude=DRIVE_EXCLUDE
                             Exclude drives matching this pattern
       -i DRIVE_INCLUDE, --drive-include=DRIVE_INCLUDE
@@ -35,7 +38,6 @@ drivescout lets you scan for hosts and interrogates nodes with [swift-recon](htt
       --mount-prefix=MOUNT_PREFIX
                             Search for drives mounted along this path
       --swiftdir=SWIFTDIR   Default = /etc/swift
-
 
 ## Sample usage
 

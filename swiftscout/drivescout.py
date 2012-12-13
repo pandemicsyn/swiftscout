@@ -56,11 +56,18 @@ class DriveScout(object):
                 return True
         return False
 
-    def add_dev(self, ip, port, device_name, zone, weight, meta):
+    def add_dev(self, ip, port, device_name, zone, weight, target_weight,
+                meta):
         """Add a device to the builder"""
-        self.builder.add_dev({'zone': zone, 'ip': ip, 'port': int(port),
-                              'device': device_name, 'weight': weight,
-                              'meta': meta})
+        if target_weight:
+            self.builder.add_dev({'zone': zone, 'ip': ip, 'port': int(port),
+                                  'device': device_name, 'weight': weight,
+                                  'target_weight': target_weight,
+                                  'meta': meta})
+        else:
+            self.builder.add_dev({'zone': zone, 'ip': ip, 'port': int(port),
+                                  'device': device_name, 'weight': weight,
+                                  'meta': meta})
 
     def dump_builder(self):
         """Dump builder state to disk"""
@@ -72,7 +79,7 @@ class DriveScout(object):
 
     def parse_ip(self, ipaddr):
         """Parse an ip range (single ip), and return a list of validated ips"""
-        #todo validate ip. regex ?
+        # todo validate ip. regex ?
         if ipaddr.count('.') == 3:
             if ipaddr.count('-') == 0:
                 return [ipaddr]
@@ -90,9 +97,9 @@ class DriveScout(object):
             print "Malformed ip"
             exit(1)
 
-    def scan(self, hosts, zone, meta, weight, mount_prefix='/srv/node',
-             include_pattern='', exclude_pattern='', dry_run=False,
-             confirm=True):
+    def scan(self, hosts, zone, meta, weight, target_weight,
+             mount_prefix='/srv/node', include_pattern='', exclude_pattern='',
+             dry_run=False, confirm=True):
         """Search for and possible add devices to the ring by querying the
         recon interface on a provide iprange."""
         exclude = re.compile(exclude_pattern)
@@ -133,14 +140,16 @@ class DriveScout(object):
         builder_changed = False
         for host in found:
             for device in found[host]:
-                print "Adding z%s-%s/%s_%s %s" % (zone, host, device, meta,
-                                                  weight)
+                print "Adding z%s-%s/%s_%s %s [%s]" % (zone, host, device,
+                                                       meta, weight,
+                                                       target_weight)
                 ip, port = host.split(':')
                 port = int(port)
                 if self.is_existing_dev(ip, port, device):
                     print "Skipped %s on %s already in ring." % (device, host)
                 else:
-                    self.add_dev(ip, port, device, zone, weight, meta)
+                    self.add_dev(ip, port, device, zone, weight, target_weight,
+                                 meta)
                     builder_changed = True
         if builder_changed:
             if not dry_run:
@@ -151,8 +160,8 @@ class DriveScout(object):
 
 def cli():
     usage = '''
-    usage: %prog [-v] [--suppress] [-y] [-z zone] [-w weight] [-m "meta"]
-    [--swift-dir=/etc/swift] builder.file
+    usage: %prog [-v] [--suppress] [-y] [-z zone] [-w weight] [-t tgt_weight]
+    [-m "meta"] [--swift-dir=/etc/swift] builder.file
 
     ex: %prog -y -r 1.1.1.1-254 -p 6000 --zone=1 -w 25 object.builder -y
     '''
@@ -165,9 +174,11 @@ def cli():
                     help="Suppress most connection related errors")
     args.add_option('--zone', '-z', type="int",
                     help="Add devices to given zone")
-    args.add_option('--weight', '-w', type="int",
+    args.add_option('--weight', '-w', type="float",
                     help="Add devices with given weight")
-    args.add_option('--timeout', '-t', type="int", metavar="SECONDS",
+    args.add_option('--target-weight', '-t', default=None,
+                    help="Add with target weight, Default = Not Used")
+    args.add_option('--timeout', type="int", metavar="SECONDS",
                     help="Time to wait for a response from a server",
                     default=1)
     args.add_option('--yes', '-y', action="store_true",
@@ -220,6 +231,8 @@ def cli():
             exit(1)
     if options.weight:
         weight = options.weight
+    elif options.weight == 0.0:
+        weight = options.weight
     else:
         read_weight = raw_input('Enter weight for devices: ').strip()
         try:
@@ -230,6 +243,17 @@ def cli():
         if weight < 0:
             print "Aborting. Invalid weight. Must be positive."
             exit(1)
+    if options.target_weight:
+        try:
+            target_weight = float(options.target_weight)
+        except ValueError:
+            print "Aborting. Invalid target weight. Must be a digit/float."
+            exit(1)
+        if target_weight < 0:
+            print "Aborting. Invalid target weight. Must be positive."
+            exit(1)
+    else:
+        target_weight = None
     if options.yes:
         confirm = False
     else:
@@ -242,7 +266,7 @@ def cli():
     hosts = [(ip, port) for ip in scout.parse_ip(iprange)]
 
     scout.scan(hosts, zone=zoneid, meta=options.meta, weight=weight,
-               mount_prefix=options.mount_prefix,
+               target_weight=target_weight, mount_prefix=options.mount_prefix,
                exclude_pattern=options.drive_exclude,
                include_pattern=options.drive_include, dry_run=options.dry_run,
                confirm=confirm)
