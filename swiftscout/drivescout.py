@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 from swiftscout.utils import RingScan
+from tempfile import mkstemp
 from urlparse import urlparse
 from sys import exit, argv
 import optparse
 import cPickle as pickle
-from os.path import basename, isfile, join as pathjoin
+from shutils import copy
+from os.path import basename, isfile, join as pathjoin, dirname
 from hashlib import md5
+from swift.common.utils import lock_parent_directory
 from swift.common.ring import RingBuilder
 from time import time
 from errno import EEXIST
-from os import mkdir
+from os import mkdir, fdopen, rename
 import re
 
 
@@ -23,18 +26,35 @@ class DriveScout(object):
         self.backup_dir = pathjoin(self.swiftdir, backup_dir_name)
         self.builder = RingBuilder.load(builder_file)
 
-    def make_backup(self):
-        """Create a backup of the current builder builder contents"""
+    def _make_backup(self):
+        """ Create a backup of a file
+        :returns: List of backed up filename and md5sum of backed up file
+        """
         try:
             mkdir(self.backup_dir)
         except OSError, err:
             if err.errno != EEXIST:
                 raise
-        backup = pathjoin(self.backup_dir, '%d.' %
-                          time() + basename(self.builder_file))
-        pickle.dump(self.builder.to_dict(), open(backup, 'wb'), protocol=2)
-        print "Backed up builder too %s (%s)" % \
-              (backup, self.get_md5sum(backup))
+        backup = pathjoin(self.backup_dir,
+                          '%d.' % time() + basename(self.builder_file))
+        copy(self.builder_file, backup)
+        return [backup, self.get_md5sum(backup)]
+
+    def dump_builder(self):
+        """Write out new builder files
+
+        :param builder: The builder to dump
+        :builder_file: The builder file to write to
+        """
+        with lock_parent_directory(self.builder_file, 15):
+            print "Backed up %s to %s (%s)" % (self.builder_file, self._make_backup())
+            fd, tmppath = mkstemp(
+                dir=dirname(self.builder_file), suffix='.tmp.builder')
+            pickle.dump(self.builder.to_dict(), fdopen(fd, 'wb'), protocol=2)
+            rename(tmppath, self.builder_file)
+        print "Success. %s updated. (%s)" % (
+            self.builder_file, self.get_md5sum(self.builder_file))
+        print "Rebalance still required."
 
     def get_md5sum(self, filename):
         """Get the md5sum of a given file"""
@@ -68,14 +88,6 @@ class DriveScout(object):
             self.builder.add_dev({'zone': zone, 'ip': ip, 'port': int(port),
                                   'device': device_name, 'weight': weight,
                                   'meta': meta})
-
-    def dump_builder(self):
-        """Dump builder state to disk"""
-        pickle.dump(self.builder.to_dict(), open(self.builder_file, 'wb'),
-                    protocol=2)
-        print "Success. %s updated. (%s)" % (
-            self.builder_file, self.get_md5sum(self.builder_file))
-        print "Rebalance still required."
 
     def parse_ip(self, ipaddr):
         """Parse an ip range (single ip), and return a list of validated ips"""
@@ -133,10 +145,6 @@ class DriveScout(object):
             if not confirm_resp in ['yes', 'y']:
                 print "aborting."
                 exit(1)
-        if not dry_run:
-            self.make_backup()
-        else:
-            print "Dry Run - skipping backing up builder file"
         builder_changed = False
         for host in found:
             for device in found[host]:
