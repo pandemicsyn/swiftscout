@@ -47,7 +47,8 @@ class DriveScout(object):
         :builder_file: The builder file to write to
         """
         with lock_parent_directory(self.builder_file, 15):
-            print "Backed up %s to %s (%s)" % (self.builder_file, self._make_backup())
+            bfile, bmd5 = self._make_backup()
+            print "Backed up %s to %s (%s)" % (self.builder_file, bfile, bmd5)
             fd, tmppath = mkstemp(
                 dir=dirname(self.builder_file), suffix='.tmp.builder')
             pickle.dump(self.builder.to_dict(), fdopen(fd, 'wb'), protocol=2)
