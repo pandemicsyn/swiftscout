@@ -5,13 +5,13 @@ from urlparse import urlparse
 from sys import exit, argv
 import optparse
 import cPickle as pickle
-from shutils import copy
+from shutil import copy
+from errno import EEXIST
 from os.path import basename, isfile, join as pathjoin, dirname
 from hashlib import md5
 from swift.common.utils import lock_parent_directory
 from swift.common.ring import RingBuilder
 from time import time
-from errno import EEXIST
 from os import mkdir, fdopen, rename
 import re
 
