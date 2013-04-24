@@ -78,17 +78,17 @@ class DriveScout(object):
         return False
 
     def add_dev(self, ip, port, device_name, zone, weight, target_weight,
-                meta):
+                meta, region=1):
         """Add a device to the builder"""
         if target_weight:
             self.builder.add_dev({'zone': zone, 'ip': ip, 'port': int(port),
                                   'device': device_name, 'weight': weight,
                                   'target_weight': target_weight,
-                                  'meta': meta})
+                                  'meta': meta, 'region': region})
         else:
             self.builder.add_dev({'zone': zone, 'ip': ip, 'port': int(port),
                                   'device': device_name, 'weight': weight,
-                                  'meta': meta})
+                                  'meta': meta, 'region': region})
 
     def parse_ip(self, ipaddr):
         """Parse an ip range (single ip), and return a list of validated ips"""
@@ -110,7 +110,7 @@ class DriveScout(object):
             print "Malformed ip"
             exit(1)
 
-    def scan(self, hosts, zone, meta, weight, target_weight,
+    def scan(self, hosts, zone, meta, weight, target_weight, region=1,
              mount_prefix='/srv/node', include_pattern='', exclude_pattern='',
              dry_run=False, confirm=True):
         """Search for and possible add devices to the ring by querying the
@@ -158,7 +158,7 @@ class DriveScout(object):
                     print "Skipped %s on %s already in ring." % (device, host)
                 else:
                     self.add_dev(ip, port, device, zone, weight, target_weight,
-                                 meta)
+                                 meta, region)
                     builder_changed = True
         if builder_changed:
             if not dry_run:
@@ -178,7 +178,7 @@ def cli():
     args.add_option('--verbose', '-v', action="store_true",
                     help="Print verbose info")
     args.add_option('--dry-run', action="store_true",
-                    help="Dry run don't make any changes to builder files")
+                    help="Don't make any actual changes to builder files")
     args.add_option('--suppress', action="store_true",
                     help="Suppress most connection related errors")
     args.add_option('--zone', '-z', type="int",
@@ -195,6 +195,7 @@ def cli():
     args.add_option('--meta', '-m', default="", help="Default = Nothing")
     args.add_option('--iprange', '-r', default="", help="")
     args.add_option('--port', '-p', default="", help="")
+    args.add_option('--region', default="1", type="int", help="Default = 1")
     args.add_option('--drive-exclude', '-e', default="",
                     help="Exclude drives matching this pattern")
     args.add_option('--drive-include', '-i', default="",
@@ -273,9 +274,9 @@ def cli():
     scout = DriveScout(builder_file, swiftdir=options.swiftdir,
                        verbose=options.verbose)
     hosts = [(ip, port) for ip in scout.parse_ip(iprange)]
-
     scout.scan(hosts, zone=zoneid, meta=options.meta, weight=weight,
-               target_weight=target_weight, mount_prefix=options.mount_prefix,
+               target_weight=target_weight, region=options.region,
+               mount_prefix=options.mount_prefix,
                exclude_pattern=options.drive_exclude,
                include_pattern=options.drive_include, dry_run=options.dry_run,
                confirm=confirm)
